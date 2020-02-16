@@ -1,0 +1,18 @@
+
+# CC options for LEON platform
+#
+CC=sparc-elf-gcc
+PROMOPT = -v -freq 40 -baud 38400 -romws 2 -romsize 65536 -nosram -sdram 64 -col 9  -msoft-float
+MKPROM  = sparc-elf-mkprom 
+OBJDUMP = sparc-elf-objdump
+CFLAGS= -O3 -funroll-loops  -w -DLEON
+
+all: gf_leon.ram
+
+gf_leon.ram: graspforth.c leon.c forthdef.h leon.h
+	$(CC) $(CFLAGS) -o $@ graspforth.c leon.c
+	$(OBJDUMP) -d -S $@ > $(basename $@).dis
+	$(MKPROM) $(PROMOPT) -o $(basename $@).rom $@
+
+clean:
+	rm -f gf_*.*

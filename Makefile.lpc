@@ -1,0 +1,63 @@
+VERSION = 100
+
+NAME = flash.elf
+
+# Define the target processor
+TARGET = arm7tdmi
+#define the C modules
+objects =  graspforth.o
+#define the asm modules
+aobjects = LPC2124.o
+
+TOOLS =  /tools/gnuarm-3.4.0
+
+CC = $(TOOLS)/bin/arm-elf-gcc		#The ARM GCC cross compiler	
+RM = rm
+OC = $(TOOLS)/bin/arm-elf-objcopy	#File convert utility
+AR = $(TOOLS)/bin/arm-elf-ar
+AS = $(TOOLS)/bin/arm-elf-as
+LD = $(TOOLS)/bin/arm-elf-ld
+OD = $(TOOLS)/bin/arm-elf-objdump
+
+
+AFLAGS = -m arm7tdmi 
+CFLAGS = -O3 -mcpu=${TARGET} -DLPC -w -c -gdwarf-2 -MD -mhard-float -mapcs-frame -IC 
+LFLAGS =  -mcpu=${TARGET}
+
+INC =   -I. -I$(TOOLS)/include 
+LINKPATH = -L$(TOOLS)/lib -L$(TOOLS)/lib/gcc/arm-elf/3.4.0/
+
+all: build_project link_project change_format
+
+clean: clean_project
+
+build_project: ${objects} ${aobjects}
+
+${objects}: %.o: %.c 
+	${CC} ${INC} ${CFLAGS} $< -o $@
+    	
+${objects}: Makefile
+
+${aobjects}: %.o: %.s
+	${AS}  ${AFLAGS} $< -o $@
+
+clean_project:
+	${RM} -f ${objects} ${aobjects} *.elf *.hex
+	
+build_all: clean all
+
+link_project:
+	${LD} -o ${NAME} ${objects} ${aobjects} -T LPC2124.ld ${LINKPATH} -lgcc -M > flash.map
+	
+change_format:
+	$(OC) -O ihex flash.elf flash.hex
+	$(OC) -O binary flash.elf flash.bin
+	${OD} -h -x flash.elf > flash.lnkh
+	
+download:
+	/usr/local/bin/lpc21isp -bin flash.bin /dev/ttyS0 57600 18432
+
+    
+    
+    
+

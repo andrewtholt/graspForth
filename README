@@ -1,0 +1,99 @@
+---------------------------------------------------------------------------------------
+graspForth .. a 32-bit Forth by Bernard Mentink (c)2004 Version 0.85
+	( graspForth stands for: a Gcc/Relocatable/fAst/Small/Portable Forth ).
+---------------------------------------------------------------------------------------
+	
+graspForth is my humble attempt at a Forth-in-C that has the following goals:
+
+GCC .........  to support all 32-bit micros that GCC cross-compiles to.
+Relocatable .  to be able to run in-place in either Flash or Ram.
+Fast ........  to be "not much" slower than an assembly based native Forth. 
+Small .......  to fit-in approx 300 words in less than 25Kbytes on a 32-bit machine.
+Portable ....  to achieve a 5 minute port to a new 32bit micro-processor, or micro-controller.
+ 
+In order to achieve these goals graspForth is written in the following way:
+
+GCC:
+	Since GCC cross-compiles to many common 32-bit micro's, I have standardized on GCC as my
+	tool of choice. ( I currently use version 3.4.x, it produces fast, stable code ).
+	
+Relocatable:
+	As at version 0.85, this goal has not been achieved yet. Addresses are currently absolute 
+	so "application code" stored in Flash must be copied-to and run in ram at the addresses it was 
+	compiled at. (The kernel words of course, are run from flash directly). For me it is not a big 
+	issue yet, as the chips I use have lots of ram, but I am working on a version
+	that uses relative address's, so applications can be run in-situ in flash. Any idea's on the best
+	approach to this are most welcome. There is a speed penalty, since "next" has to calculate
+	the address offset .. shoudn't be too big a penalty though :)	
+
+Fast:
+	I have used GCC's "calculated labels" approach to threading. This is much faster and neater
+	than using large case statements or jump-tables and fits well with the Forth threading model.
+	By necessity I have used ITC (Indirect Threaded Code), as there is no way to lay down a machine
+	"call or jump" instruction from within C to implement DTC (Direct Threaded Code) ... and ITC is 
+	inherently more portable and readable anyway, .. all high-level words are addresses only. 
+	The resulting code is close to DTC speed, depending on the target processor and optimizations
+	done by the compiler (i.e what -O flag you provide etc ), and is "fast enough" (IMHO).
+	Benchmarking against pForth and gForth (other Forth-in-C's) show a factor of 3x improvement 
+	on pForth (pure C) and slightly slower than gForth (I suspect gForth does some optimizations .. ?)
+	(On my 1.4G Centrino Laptop running Linux, graspForth can achieve 400 million Forth instructions
+	per second! ... probably running out of cache? ) The ARM LPC21xx uP running at 60Mhz 
+	achieves > 3 million Forth instructions-per-second (running in flash). I think that an average 
+	20 machine cycles per Forth word is acceptable for a simple Forth-in-C (IMHO). 
+	
+Small:
+	I have endevoured to write graspForth in "Pseudo-Forth" so that there is no need
+	to use C libraries, and since it is Forth, it is inherently small. 
+	The only lib used is gcc.a to allow C multiply and divide words (these are small).
+	To achieve what I think is a good balance between speed/size, I have elected to code 75 kernel 
+	words in C, the rest are in Pseudo-Forth. Also by using Pseudo-Forth, reading the code 
+	produces a better understanding of Forth. After all, it's Forth we are interested in, not C. 
+	Resulting Size of the target image is approx 22Kbytes for a Linux (x86) machine and 16Kbytes
+	for an ARM7 uP.
+	
+Portable:
+	By standardizing on GCC, and the processor targets that GCC supports, there are many advantages.
+	To port to a different target processor, all that is required is the modification of one
+	simple header file supplying the memory map, putchar(),getchar() and initIO()
+	functions, and specifying the ENDIAN'ess of the machine, also whether \n or \r is used for
+	the carriage return. Then using the GCC cross-compiler tools for the target processor,
+	simply re-compile, download and run ... 5 minutes work.
+	
+I have developed graspForth on a Linux platform, and so far, have tested it on a Philips LPC2124
+uP (ARM7 little-endian based), the port to the ARM chip took less than 5-mins. The code has also been run on a LEON3/Spark processor implemented in an FPGA (big-endian) and on a Win32 machine under Cygwin by a 3rd party ... thanks Rolf...
+
+Build Instructions:
+-------------------
+
+Although several header files exist for different targets, I will give build instructions for the Linux x86 platform, it should just build by default. Have a look at platform.h, that is where the decisions as to what platform gets built takes place. In the Makefile you should find a -DLINUX in the cflags which makes platform.h include the linux.h header file, this is where all the platform specific code exists for a Linux target. In essence, you need to add your plaform specific xxxx.h to platform.h, add all your specific code to xxxx.h, create your Makefile, and away you go....
+
+I have included several .h files and Makefiles for different targets, you will get the idea.
+
+graspForth is not ANS-Forth, and was not intended to be, it is close though. Some notable 
+differences are:
+1. The "<# # #S #>" construct takes a single stack element as an argument, I did not see the 
+	point of needing a 64 bit value .. since this is a 32 bit forth ;)
+2. I have only included maths words that I though most useful. IE signed/unsigned versions of
+	* / + - mod u/mod etc, only */ and u*/ use a 64 bit intermediate value. 
+
+I have included a graspForth.glo (glossary) file that describes the use of each word.
+
+Once you have a Forth kernel running on your hardware, and you are talking to it via a serial port, you can then interactively compile new application words to RAM. You can also compile Forth words in a file, by using your terminal emulator to send the file as ascii (turn xon/xoff on ) and develop and test your code running from RAM. You need to add the forth word FILE at the beginning of your code file, and the word HAND at the end. This re-vectors some IO words for file loading.
+
+When your code is developed to your satisfaction you can create a Forth word that saves your RAM image to ROM/Flash. There is code in the kernel to copy your ROM code to RAM, and jump to your high level word on boot. ( See the beginning of graspForth.c, there is a typedef struct called ROM_HEADER, just load data in your ROM in the same format, followed by your RAM image, put the start address in platform.h, set the boot vector, and you are good to go.)
+
+Future Enhancements:
+--------------------
+
+Shortly I will be comming up with a version that includes a pre-processor to do all the word and dictionary linking that was done by hand in the kernel. This will make it much easier to maintain the kernel code ... IE to add/remove words etc.
+
+As mention in the header of graspforth.c, if you have made any improvements/bug fixes to graspForth
+please send then to me (address below) for inclusion in the next release.
+
+Happy FORTH'ing,
+
+Bernard Mentink
+bmentink-at-gmail-dot-com
+
+	
+ 

@@ -1,0 +1,13 @@
+
+# CC options for CYGWIN platform
+#
+CC=gcc -pipe
+CFLAGS= -O3 -funroll-loops  -w -DCYGWIN
+
+all: gf.exe
+
+gf.exe: graspforth.c linux.c forthdef.h linux.h
+	$(CC) $(CFLAGS) -o $@ graspforth.c linux.c
+
+clean:
+	rm -f gf.exe
