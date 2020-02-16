@@ -2,8 +2,7 @@ CC=gcc -pipe
 INCLUDE=
 LIBS=
 
-
-CFLAGS= -m32 -Wall $(INCLUDE) -O3 -funroll-loops -w  -DLINUX 
+CFLAGS= -g -m32 -Wall $(INCLUDE) -O3 -funroll-loops -w  -DLINUX 
 
 all: graspforth
 
